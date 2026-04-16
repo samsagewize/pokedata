@@ -15,7 +15,17 @@
     .set-badge.mastered { background-color: #facc15; color: black; box-shadow: 0 0 25px #facc15; }
     .card-img { transition: transform 0.3s; max-height: 140px; }
     .scroll-container { max-height: calc(100vh - 190px); overflow-y: auto; scrollbar-width: thin; }
-    .post { transition: all 0.2s; }
+
+    /* Page Flip Animation */
+    .tab {
+      transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      opacity: 0;
+      transform: rotateY(-15deg) translateX(40px);
+    }
+    .tab.active {
+      opacity: 1;
+      transform: rotateY(0deg) translateX(0);
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen">
@@ -58,55 +68,93 @@
     <!-- Tabs -->
     <div class="flex gap-2 p-4 border-b border-gray-700 overflow-x-auto bg-black/50">
       <button onclick="showTab('home')" class="tab-btn active px-6 py-3 font-medium">🏠 Home</button>
-      <button onclick="showTab('search')" class="tab-btn px-6 py-3 font-medium">Search</button>
+      <button onclick="showTab('search')" class="tab-btn px-6 py-3 font-medium">🔍 Search</button>
       <button onclick="showTab('camera')" class="tab-btn px-6 py-3 font-medium">📸 Scan</button>
       <button onclick="showTab('collection')" class="tab-btn px-6 py-3 font-medium">Collection</button>
       <button onclick="showTab('sets')" class="tab-btn px-6 py-3 font-medium">Master Sets</button>
       <button onclick="showTab('online')" class="tab-btn px-6 py-3 font-medium">🌐 Online</button>
-      <button onclick="showTab('profile')" class="tab-btn px-6 py-3 font-medium">Profile</button>
+      <button onclick="showTab('profile')" class="tab-btn px-6 py-3 font-medium">👤 Profile</button>
     </div>
 
-    <!-- Scrollable Content -->
+    <!-- Scrollable Content Area -->
     <div class="flex-1 overflow-y-auto scroll-container p-6">
 
-      <!-- HOME / PUBLIC FEED -->
-      <div id="homeTab" class="tab">
-        <h2 class="text-3xl font-bold mb-6">Trainer Feed</h2>
-
-        <!-- Post Composer -->
+      <!-- HOME FEED -->
+      <div id="homeTab" class="tab active">
+        <h2 class="text-3xl font-bold mb-6">Trainer Community</h2>
         <div class="bg-gray-900 rounded-3xl p-6 mb-8">
           <textarea id="postText" placeholder="Show off your latest pull or collection milestone..." 
             class="w-full h-24 p-4 bg-gray-800 rounded-2xl resize-y focus:outline-none"></textarea>
-          <button onclick="createPost()" 
-            class="mt-4 px-8 py-3 bg-yellow-400 text-black font-bold rounded-3xl">Post to Community</button>
+          <button onclick="createPost()" class="mt-4 px-8 py-3 bg-yellow-400 text-black font-bold rounded-3xl">Post to Community</button>
         </div>
-
-        <!-- Feed Posts -->
         <div id="feedPosts" class="space-y-8"></div>
       </div>
 
-      <!-- Master Sets & Set Detail (same as before) -->
-      <div id="setsTab" class="tab hidden"> <!-- ... your previous master sets code ... --> </div>
-      <div id="setDetailView" class="tab hidden"> <!-- ... previous set detail with grayscale/color + prices ... --> </div>
+      <!-- SEARCH -->
+      <div id="searchTab" class="tab hidden">
+        <input id="searchInput" type="text" placeholder="Search any Pokémon card..." 
+          class="w-full p-5 rounded-3xl bg-gray-900 text-lg mb-4" onkeyup="if(event.key==='Enter') searchCards()">
+        <button onclick="searchCards()" class="px-10 py-4 bg-yellow-400 text-black font-bold rounded-3xl">Search</button>
+        <div id="searchResults" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 mt-10"></div>
+      </div>
 
-      <!-- Online Tab (kept from before) -->
-      <div id="onlineTab" class="tab hidden"> <!-- ... previous online trainers, friends, messages ... --> </div>
+      <!-- CAMERA SCAN -->
+      <div id="cameraTab" class="tab hidden">
+        <div class="bg-black rounded-3xl overflow-hidden">
+          <video id="video" autoplay playsinline class="w-full max-h-96"></video>
+        </div>
+        <button onclick="takePhoto()" class="mt-6 w-full py-8 bg-green-500 text-black font-bold text-2xl rounded-3xl">📸 Scan Card</button>
+        <div id="scanResult" class="mt-8"></div>
+      </div>
 
-      <!-- Other tabs (Profile, Search, Camera, Collection) remain -->
-      <div id="profileTab" class="tab hidden"> <!-- profile content --> </div>
-      <div id="searchTab" class="tab hidden"> <!-- search with prices --> </div>
-      <div id="cameraTab" class="tab hidden"> <!-- camera --> </div>
-      <div id="collectionTab" class="tab hidden"> <!-- collection with prices --> </div>
+      <!-- COLLECTION -->
+      <div id="collectionTab" class="tab hidden">
+        <h2 class="text-2xl font-bold mb-6">My Collection <span id="collectionCount" class="text-sm bg-gray-800 px-3 py-1 rounded-full"></span></h2>
+        <div id="myCollection" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6"></div>
+      </div>
+
+      <!-- MASTER SETS -->
+      <div id="setsTab" class="tab hidden">
+        <h2 class="text-3xl font-bold mb-6">Master Sets 🏆</h2>
+        <div id="setsContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+      </div>
+
+      <!-- SET DETAIL -->
+      <div id="setDetailView" class="tab hidden">
+        <button onclick="closeSetDetail()" class="mb-6 text-yellow-400 hover:underline">← Back to Sets</button>
+        <h2 id="detailSetName" class="text-3xl font-bold mb-1"></h2>
+        <p id="detailSetEra" class="text-gray-400 mb-8"></p>
+        <div id="setCardsGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6"></div>
+      </div>
+
+      <!-- ONLINE -->
+      <div id="onlineTab" class="tab hidden">
+        <h2 class="text-3xl font-bold mb-6">Trainers Online 🌐</h2>
+        <div id="onlineTrainers" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div id="profileTab" class="tab hidden">
+        <div class="max-w-2xl mx-auto bg-gray-900 p-10 rounded-3xl">
+          <h2 class="text-3xl font-bold mb-8 text-center">Trainer Profile</h2>
+          <div class="flex justify-center mb-10">
+            <div id="bigAvatar" class="w-40 h-40 bg-gray-800 rounded-3xl border-8 border-yellow-400 overflow-hidden"></div>
+          </div>
+          <input id="trainerName" class="w-full p-5 rounded-3xl bg-gray-800 text-2xl font-bold text-center mb-6">
+          <textarea id="bio" rows="4" class="w-full p-5 rounded-3xl bg-gray-800 mb-8"></textarea>
+          <button onclick="saveProfile()" class="w-full py-6 bg-yellow-400 text-black font-bold text-xl rounded-3xl">Save Profile</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    // Data
     let currentUser = localStorage.getItem('trainerName') || "Trainer";
     let bio = localStorage.getItem('bio') || "Aspiring Pokémon Master!";
     let selectedStarter = localStorage.getItem('starterSprite') || 'pikachu';
     let myCards = JSON.parse(localStorage.getItem('myPokemonCards') || '[]');
     let posts = JSON.parse(localStorage.getItem('communityPosts') || '[]');
+    let friends = JSON.parse(localStorage.getItem('friends') || '[]');
 
     const starters = {
       pikachu: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
@@ -115,16 +163,30 @@
       squirtle: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png"
     };
 
-    // Fake price estimator (Collectr-style - in real app use TCGdex.dev or pokemon-api.com)
+    // Demo sets with real sprites
+    const allSets = [
+      {
+        id: "base", name: "Base Set", era: "Original", total: 102,
+        cards: [
+          {id:"base-4", name:"Charizard", sprite:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png"},
+          {id:"base-2", name:"Blastoise", sprite:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png"},
+          {id:"base-3", name:"Venusaur", sprite:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png"},
+          {id:"base-58", name:"Pikachu", sprite:"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"}
+        ]
+      },
+      {
+        id: "sv151", name: "Scarlet & Violet 151", era: "SV", total: 165,
+        cards: Array.from({length: 20}, (_, i) => ({
+          id: `sv151-${i+1}`,
+          name: ["Bulbasaur","Ivysaur","Venusaur","Charmander","Charmeleon","Charizard","Squirtle","Wartortle","Blastoise","Pikachu"][i%10] || `Pokémon ${i+1}`,
+          sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${(i%151)+1}.png`
+        }))
+      }
+    ];
+
     function getCardPrice(name) {
-      const prices = {
-        "Pikachu": 12.50,
-        "Charizard": 245.00,
-        "Blastoise": 68.75,
-        "Venusaur": 55.00,
-        "Mewtwo": 42.30
-      };
-      return prices[name] || (Math.random() * 80 + 5).toFixed(2);
+      const prices = {"Charizard": 245, "Blastoise": 68, "Venusaur": 55, "Pikachu": 12.5};
+      return prices[name] || (Math.random() * 45 + 8).toFixed(2);
     }
 
     function openPokedex() {
@@ -140,20 +202,23 @@
     function updateProfileHeader() {
       document.getElementById('trainerNameHeader').textContent = currentUser;
       document.getElementById('welcomeText').textContent = bio.substring(0, 50) + "...";
-      const avatarHTML = `<img src="${starters[selectedStarter]}" class="w-full h-full object-contain p-1">`;
-      document.getElementById('profileAvatar').innerHTML = avatarHTML;
+      document.getElementById('profileAvatar').innerHTML = `<img src="${starters[selectedStarter]}" class="w-full h-full object-contain p-1">`;
+      document.getElementById('bigAvatar').innerHTML = `<img src="${starters[selectedStarter]}" class="w-full h-full object-contain p-1">`;
+    }
+
+    function saveProfile() {
+      currentUser = document.getElementById('trainerName').value.trim() || "Trainer";
+      bio = document.getElementById('bio').value.trim() || "Aspiring Pokémon Master!";
+      localStorage.setItem('trainerName', currentUser);
+      localStorage.setItem('bio', bio);
+      updateProfileHeader();
+      alert("Profile saved!");
     }
 
     function createPost() {
       const text = document.getElementById('postText').value.trim();
       if (!text) return;
-      posts.unshift({
-        id: Date.now(),
-        user: currentUser,
-        text: text,
-        likes: Math.floor(Math.random() * 20) + 3,
-        time: "just now"
-      });
+      posts.unshift({ id: Date.now(), user: currentUser, text, likes: Math.floor(Math.random()*30)+5, time: "just now" });
       localStorage.setItem('communityPosts', JSON.stringify(posts));
       document.getElementById('postText').value = '';
       renderFeed();
@@ -162,47 +227,166 @@
     function renderFeed() {
       const container = document.getElementById('feedPosts');
       container.innerHTML = '';
-      posts.forEach(post => {
+      posts.forEach(p => {
         const div = document.createElement('div');
-        div.className = 'post bg-gray-900 rounded-3xl p-6';
+        div.className = 'bg-gray-900 rounded-3xl p-6';
         div.innerHTML = `
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center text-black font-bold">👤</div>
-            <div>
-              <p class="font-bold">${post.user}</p>
-              <p class="text-xs text-gray-400">${post.time}</p>
-            </div>
+          <div class="flex gap-3 mb-4">
+            <div class="w-10 h-10 bg-yellow-400 text-black rounded-2xl flex items-center justify-center font-bold">👤</div>
+            <div><p class="font-bold">${p.user}</p><p class="text-xs text-gray-400">${p.time}</p></div>
           </div>
-          <p class="mb-6">${post.text}</p>
-          <div class="flex items-center gap-6 text-sm">
-            <span>❤️ ${post.likes}</span>
-            <span>💬 ${Math.floor(Math.random()*8)+1}</span>
-          </div>
+          <p class="mb-6">${p.text}</p>
+          <div class="flex gap-6 text-sm"><span>❤️ ${p.likes}</span><span>💬 ${Math.floor(Math.random()*8)+2}</span></div>
         `;
         container.appendChild(div);
       });
     }
 
-    function showTab(tab) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.add('hidden'));
-      const active = document.getElementById(tab + 'Tab');
-      if (active) active.classList.remove('hidden');
+    async function searchCards() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) return;
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '<p class="col-span-full text-center">Searching...</p>';
 
+      // Simulate real search
+      setTimeout(() => {
+        resultsDiv.innerHTML = `
+          <div class="bg-gray-900 rounded-3xl p-6 text-center">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" class="pokemon-sprite mx-auto">
+            <p class="font-bold mt-4">${query}</p>
+            <p class="text-green-400">$${getCardPrice(query)}</p>
+            <button onclick="addToCollection('${query}')" class="mt-4 px-6 py-2 bg-yellow-400 text-black rounded-2xl">Add to Collection</button>
+          </div>
+        `;
+      }, 800);
+    }
+
+    function addToCollection(name) {
+      if (myCards.some(c => c.name === name)) return alert("Already owned!");
+      myCards.push({id: Date.now(), name, image: ""});
+      localStorage.setItem('myPokemonCards', JSON.stringify(myCards));
+      alert(`Added ${name} to collection!`);
+      loadCollection();
+    }
+
+    function loadCollection() {
+      const container = document.getElementById('myCollection');
+      container.innerHTML = '';
+      document.getElementById('collectionCount').textContent = myCards.length + " cards";
+
+      myCards.forEach(card => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-900 rounded-3xl p-4 text-center';
+        div.innerHTML = `
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" class="pokemon-sprite mx-auto">
+          <p class="font-medium mt-3">${card.name}</p>
+          <p class="text-green-400 text-sm">$${getCardPrice(card.name)}</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderMasterSets() {
+      const container = document.getElementById('setsContainer');
+      container.innerHTML = '';
+      allSets.forEach(set => {
+        const owned = set.cards.filter(c => myCards.some(mc => mc.name === c.name)).length;
+        const div = document.createElement('div');
+        div.className = `set-badge p-6 bg-gray-900 rounded-3xl text-center`;
+        div.innerHTML = `<div class="text-5xl mb-3">🏆</div><p class="font-bold">${set.name}</p><p class="text-xs text-gray-400">${set.era} • ${owned}/${set.cards.length}</p>`;
+        div.onclick = () => showSetDetail(set);
+        container.appendChild(div);
+      });
+    }
+
+    let currentSet = null;
+    function showSetDetail(set) {
+      currentSet = set;
+      document.getElementById('setsTab').classList.add('hidden');
+      document.getElementById('setDetailView').classList.remove('hidden');
+      document.getElementById('detailSetName').textContent = set.name;
+      document.getElementById('detailSetEra').textContent = `${set.era} • ${set.total} cards`;
+
+      const grid = document.getElementById('setCardsGrid');
+      grid.innerHTML = '';
+      set.cards.forEach(card => {
+        const owned = myCards.some(mc => mc.name === card.name);
+        const div = document.createElement('div');
+        div.className = 'bg-gray-900 rounded-3xl p-4 text-center';
+        div.innerHTML = `
+          <img src="${card.sprite}" class="pokemon-sprite mx-auto ${owned ? '' : 'grayscale'}">
+          <p class="font-medium text-sm mt-3">${card.name}</p>
+          <p class="text-green-400 text-xs">$${getCardPrice(card.name)}</p>
+          ${owned ? '<p class="text-green-400 text-xs mt-2">✓ Verified</p>' : 
+            `<button onclick="addToCollection('${card.name}'); event.stopImmediatePropagation()" class="mt-4 text-xs bg-yellow-400 text-black px-5 py-2 rounded-xl w-full">Add</button>`}
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    function closeSetDetail() {
+      document.getElementById('setDetailView').classList.add('hidden');
+      document.getElementById('setsTab').classList.remove('hidden');
+    }
+
+    // Camera
+    let videoStream = null;
+    async function startCamera() {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('video').srcObject = videoStream;
+      } catch(e) { alert("Camera access denied"); }
+    }
+
+    function takePhoto() {
+      const fakeName = prompt("What card did you scan? (demo)", "Pikachu");
+      if (fakeName) addToCollection(fakeName);
+      document.getElementById('scanResult').innerHTML = `<p class="text-green-400">✅ Scanned: ${fakeName}</p>`;
+      if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    }
+
+    // Online Tab (simplified)
+    function renderOnlineTab() {
+      const container = document.getElementById('onlineTrainers');
+      container.innerHTML = `
+        <div class="bg-gray-900 rounded-3xl p-6 text-center cursor-pointer" onclick="alert('Added as friend!')">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" class="pokemon-sprite mx-auto">
+          <p class="font-bold mt-3">AshKetchum92</p>
+          <p class="text-green-400 text-sm">Online</p>
+        </div>
+      `;
+    }
+
+    function showTab(tab) {
+      // Remove active from all tabs
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      // Add active to selected
+      const activeTab = document.getElementById(tab + 'Tab');
+      if (activeTab) activeTab.classList.add('active');
+
+      // Update buttons
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'text-yellow-400'));
       const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tab));
       if (btn) btn.classList.add('active', 'text-yellow-400');
 
+      // Load content for specific tabs
       if (tab === 'home') renderFeed();
+      if (tab === 'collection') loadCollection();
+      if (tab === 'sets') renderMasterSets();
+      if (tab === 'online') renderOnlineTab();
+      if (tab === 'profile') {
+        document.getElementById('trainerName').value = currentUser;
+        document.getElementById('bio').value = bio;
+      }
+      if (tab === 'camera') setTimeout(startCamera, 400);
     }
 
     function logout() {
       if (confirm("Close Pokédex?")) location.reload();
     }
 
-    // Placeholder for other functions (Master Sets, Camera, etc.)
     window.onload = () => {
       updateProfileHeader();
-      renderFeed();
       showTab('home');
     };
   </script>
