@@ -3,185 +3,219 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Pokémon Pokedex</title>
+  <title>PokeData • Your Pokedex</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: system-ui, sans-serif; }
+    .pokemon-sprite { width: 80px; height: 80px; object-fit: contain; transition: transform 0.3s; }
+    .pokemon-sprite:hover { transform: scale(1.15) rotate(8deg); }
+    .selected { border: 4px solid #facc15; box-shadow: 0 0 20px #facc15; }
     .card-img { transition: transform 0.3s; }
-    .card-img:hover { transform: scale(1.05); }
+    .card-img:hover { transform: scale(1.08); }
   </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen">
+<body class="bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950 text-white min-h-screen">
 
   <div class="max-w-6xl mx-auto p-4">
-    <header class="flex justify-between items-center mb-8">
-      <h1 class="text-4xl font-bold text-yellow-400">🃏 My Pokedex</h1>
+    <!-- Header with Profile -->
+    <header class="flex justify-between items-center mb-8 bg-black/50 backdrop-blur-md p-4 rounded-3xl border border-yellow-400/30">
+      <div class="flex items-center gap-4">
+        <div id="profileAvatar" class="w-14 h-14 bg-gray-800 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-yellow-400">
+          <!-- Sprite will be inserted here -->
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-yellow-400">PokeData</h1>
+          <p id="welcomeText" class="text-sm text-gray-400">Welcome, Trainer!</p>
+        </div>
+      </div>
       
-      <div class="flex gap-4">
-        <button onclick="showTab('login')" id="loginBtn"
-          class="px-6 py-2 bg-blue-600 rounded-lg">Sign In</button>
-        <button onclick="logout()" id="logoutBtn" class="hidden px-6 py-2 bg-red-600 rounded-lg">Logout</button>
+      <div class="flex gap-3">
+        <button onclick="logout()" class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-2xl text-sm font-medium">Logout</button>
       </div>
     </header>
 
-    <!-- Login Screen -->
-    <div id="loginScreen" class="max-w-md mx-auto bg-gray-900 p-8 rounded-2xl">
-      <h2 class="text-2xl mb-6 text-center">Sign in with Email</h2>
-      <input id="email" type="email" placeholder="your@email.com" 
-        class="w-full p-4 rounded-lg bg-gray-800 mb-4 text-white">
-      <input id="password" type="password" placeholder="Password" 
-        class="w-full p-4 rounded-lg bg-gray-800 mb-6 text-white">
-      <button onclick="fakeLogin()" 
-        class="w-full py-4 bg-yellow-400 text-black font-bold rounded-lg text-lg">
-        Sign In
-      </button>
-      <p class="text-center text-sm text-gray-400 mt-4">
-        (Demo - any email + password works)
-      </p>
+    <!-- Starter Selection Screen (shown first time or on reset) -->
+    <div id="starterScreen" class="max-w-lg mx-auto bg-gray-900/80 backdrop-blur-xl p-10 rounded-3xl border border-yellow-400/20">
+      <h2 class="text-3xl font-bold text-center mb-2">Choose Your Starter!</h2>
+      <p class="text-center text-gray-400 mb-8">Pick your profile companion</p>
+      
+      <div class="grid grid-cols-2 gap-6">
+        <div onclick="selectStarter('pikachu')" class="cursor-pointer text-center">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" 
+               class="pokemon-sprite mx-auto bg-gray-800 p-3 rounded-2xl" alt="Pikachu">
+          <p class="mt-3 font-semibold text-yellow-300">Pikachu ⚡</p>
+        </div>
+        <div onclick="selectStarter('bulbasaur')" class="cursor-pointer text-center">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png" 
+               class="pokemon-sprite mx-auto bg-gray-800 p-3 rounded-2xl" alt="Bulbasaur">
+          <p class="mt-3 font-semibold text-green-300">Bulbasaur 🌱</p>
+        </div>
+        <div onclick="selectStarter('charmander')" class="cursor-pointer text-center">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png" 
+               class="pokemon-sprite mx-auto bg-gray-800 p-3 rounded-2xl" alt="Charmander">
+          <p class="mt-3 font-semibold text-orange-300">Charmander 🔥</p>
+        </div>
+        <div onclick="selectStarter('squirtle')" class="cursor-pointer text-center">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png" 
+               class="pokemon-sprite mx-auto bg-gray-800 p-3 rounded-2xl" alt="Squirtle">
+          <p class="mt-3 font-semibold text-blue-300">Squirtle 💧</p>
+        </div>
+      </div>
+      
+      <p class="text-center text-xs text-gray-500 mt-10">You can change this later in settings</p>
     </div>
 
-    <!-- Main App -->
+    <!-- Main App (hidden until starter chosen) -->
     <div id="mainApp" class="hidden">
-      <div class="flex gap-2 mb-6 border-b border-gray-700">
-        <button onclick="showTab('search')" class="tab-btn active px-6 py-3">Search Cards</button>
-        <button onclick="showTab('camera')" class="tab-btn px-6 py-3">📸 Scan Card</button>
-        <button onclick="showTab('collection')" class="tab-btn px-6 py-3">My Collection</button>
-        <button onclick="showTab('sets')" class="tab-btn px-6 py-3">Master Sets</button>
+      <div class="flex gap-2 mb-8 border-b border-gray-700 pb-2 overflow-x-auto">
+        <button onclick="showTab('search')" class="tab-btn active px-8 py-3 font-medium">Search Cards</button>
+        <button onclick="showTab('camera')" class="tab-btn px-8 py-3 font-medium">📸 Scan Card</button>
+        <button onclick="showTab('collection')" class="tab-btn px-8 py-3 font-medium">My Collection</button>
       </div>
 
       <!-- Search Tab -->
       <div id="searchTab" class="tab">
-        <input id="searchInput" type="text" placeholder="Search Pokémon card (e.g. Pikachu)" 
-          class="w-full p-4 rounded-lg bg-gray-800 text-lg mb-4" onkeyup="if(event.key==='Enter') searchCards()">
+        <input id="searchInput" type="text" placeholder="Search any Pokémon card..." 
+          class="w-full p-5 rounded-3xl bg-gray-900 text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400" 
+          onkeyup="if(event.key==='Enter') searchCards()">
         <button onclick="searchCards()" 
-          class="px-8 py-3 bg-blue-600 rounded-lg">Search</button>
+          class="mt-4 px-10 py-4 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-3xl">Search</button>
 
-        <div id="searchResults" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8"></div>
+        <div id="searchResults" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 mt-10"></div>
       </div>
 
-      <!-- Camera Scan Tab -->
+      <!-- Camera Tab -->
       <div id="cameraTab" class="tab hidden">
-        <div class="bg-black rounded-2xl overflow-hidden">
+        <div class="bg-black rounded-3xl overflow-hidden border border-gray-700">
           <video id="video" autoplay playsinline class="w-full max-h-96"></video>
         </div>
         <button onclick="takePhoto()" 
-          class="mt-4 w-full py-6 bg-green-500 text-black font-bold text-2xl rounded-2xl">
-          📸 Take Picture of Card
+          class="mt-6 w-full py-8 bg-green-500 hover:bg-green-400 text-black font-bold text-2xl rounded-3xl flex items-center justify-center gap-3">
+          📸 Snap the Card
         </button>
-        <canvas id="canvas" class="hidden"></canvas>
-        
-        <div id="scanResult" class="mt-6 p-4 bg-gray-900 rounded-xl"></div>
+        <div id="scanResult" class="mt-8"></div>
       </div>
 
-      <!-- My Collection Tab -->
+      <!-- Collection Tab -->
       <div id="collectionTab" class="tab hidden">
-        <h2 class="text-2xl mb-4">My Collection</h2>
-        <div id="myCollection" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-      </div>
-
-      <!-- Master Sets Tab -->
-      <div id="setsTab" class="tab hidden">
-        <h2 class="text-2xl mb-4">Master Sets (Coming Soon)</h2>
-        <p class="text-gray-400">We'll show every Pokémon set here with your completion % later.</p>
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+          <span>My Collection</span>
+          <span id="collectionCount" class="text-sm bg-gray-800 px-3 py-1 rounded-full"></span>
+        </h2>
+        <div id="myCollection" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6"></div>
       </div>
     </div>
   </div>
 
   <script>
     let currentUser = null;
+    let selectedStarter = localStorage.getItem('starterSprite') || null;
     let myCards = JSON.parse(localStorage.getItem('myPokemonCards') || '[]');
 
-    function fakeLogin() {
-      const email = document.getElementById('email').value.trim();
-      if (!email) {
-        alert("Please enter an email");
-        return;
-      }
-      currentUser = email;
-      document.getElementById('loginScreen').classList.add('hidden');
+    const starters = {
+      pikachu: { name: "Pikachu", url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", color: "yellow" },
+      bulbasaur: { name: "Bulbasaur", url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png", color: "green" },
+      charmander: { name: "Charmander", url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png", color: "orange" },
+      squirtle: { name: "Squirtle", url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png", color: "blue" }
+    };
+
+    function selectStarter(starterKey) {
+      selectedStarter = starterKey;
+      localStorage.setItem('starterSprite', starterKey);
+      document.getElementById('starterScreen').classList.add('hidden');
       document.getElementById('mainApp').classList.remove('hidden');
-      document.getElementById('loginBtn').classList.add('hidden');
-      document.getElementById('logoutBtn').classList.remove('hidden');
-      loadCollection();
+      updateProfileHeader();
+      showTab('search');
+    }
+
+    function updateProfileHeader() {
+      if (!selectedStarter) return;
+      const starter = starters[selectedStarter];
+      const avatar = document.getElementById('profileAvatar');
+      avatar.innerHTML = `<img src="${starter.url}" class="w-full h-full object-contain p-1">`;
+      document.getElementById('welcomeText').textContent = `Trainer • ${starter.name}`;
     }
 
     function logout() {
-      currentUser = null;
-      document.getElementById('loginScreen').classList.remove('hidden');
-      document.getElementById('mainApp').classList.add('hidden');
-      document.getElementById('loginBtn').classList.remove('hidden');
-      document.getElementById('logoutBtn').classList.add('hidden');
+      if (confirm("Logout and choose a new starter?")) {
+        localStorage.removeItem('starterSprite');
+        location.reload();
+      }
     }
 
     function showTab(tab) {
       document.querySelectorAll('.tab').forEach(t => t.classList.add('hidden'));
       document.getElementById(tab + 'Tab').classList.remove('hidden');
-      
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'border-b-4', 'border-yellow-400'));
+
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'text-yellow-400'));
       const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tab));
-      if (activeBtn) activeBtn.classList.add('active', 'border-b-4', 'border-yellow-400');
+      if (activeBtn) activeBtn.classList.add('active', 'text-yellow-400');
     }
 
     async function searchCards() {
       const query = document.getElementById('searchInput').value.trim();
-      if (!query) return;
+      if (!query) return alert("Type a card name!");
 
       const resultsDiv = document.getElementById('searchResults');
-      resultsDiv.innerHTML = '<p class="col-span-full text-center">Searching...</p>';
+      resultsDiv.innerHTML = '<p class="col-span-full text-center py-12 text-gray-400">Searching the TCG database...</p>';
 
       try {
         const res = await fetch(`https://api.pokemontcg.io/v2/cards?q=name:${encodeURIComponent(query)}&pageSize=20`);
         const data = await res.json();
 
         resultsDiv.innerHTML = '';
-        if (data.data.length === 0) {
-          resultsDiv.innerHTML = '<p class="col-span-full text-center text-gray-400">No cards found</p>';
+        if (!data.data || data.data.length === 0) {
+          resultsDiv.innerHTML = `<p class="col-span-full text-center text-gray-400">No cards found for "${query}"</p>`;
           return;
         }
 
         data.data.forEach(card => {
           const div = document.createElement('div');
-          div.className = 'bg-gray-900 rounded-xl overflow-hidden';
+          div.className = 'bg-gray-900 rounded-2xl overflow-hidden hover:ring-2 hover:ring-yellow-400 transition';
           div.innerHTML = `
-            <img src="${card.images.small}" class="card-img w-full cursor-pointer" onclick="addToCollection('${card.id}', '${card.name}', '${card.images.large}')">
-            <div class="p-3">
-              <p class="font-bold">${card.name}</p>
-              <p class="text-sm text-gray-400">${card.set.name}</p>
+            <img src="${card.images.small}" class="card-img w-full cursor-pointer" onclick="addToCollection('${card.id}', '${card.name.replace(/'/g, "\\'")}', '${card.images.large}')">
+            <div class="p-4">
+              <p class="font-bold text-sm">${card.name}</p>
+              <p class="text-xs text-gray-400">${card.set.name}</p>
             </div>
           `;
           resultsDiv.appendChild(div);
         });
       } catch (e) {
-        resultsDiv.innerHTML = '<p class="col-span-full text-red-400">Error connecting to Pokémon API</p>';
+        resultsDiv.innerHTML = '<p class="col-span-full text-red-400 text-center">Could not reach Pokémon API</p>';
       }
     }
 
     function addToCollection(id, name, image) {
       if (myCards.some(c => c.id === id)) {
-        alert("You already have this card!");
+        alert("You already collected this card!");
         return;
       }
       myCards.push({ id, name, image });
       localStorage.setItem('myPokemonCards', JSON.stringify(myCards));
-      alert(`Added ${name} to your collection!`);
+      alert(`✅ ${name} added to your collection!`);
       loadCollection();
     }
 
     function loadCollection() {
       const container = document.getElementById('myCollection');
+      const countEl = document.getElementById('collectionCount');
       container.innerHTML = '';
+      countEl.textContent = myCards.length + " cards";
+
       if (myCards.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-center text-gray-400">Your collection is empty. Add some cards!</p>';
+        container.innerHTML = `<p class="col-span-full text-center py-20 text-gray-400">Your collection is empty.<br>Search or scan cards to start!</p>`;
         return;
       }
-      myCards.forEach((card, index) => {
+
+      myCards.forEach((card, i) => {
         const div = document.createElement('div');
-        div.className = 'bg-gray-900 rounded-xl overflow-hidden';
+        div.className = 'bg-gray-900 rounded-2xl overflow-hidden';
         div.innerHTML = `
           <img src="${card.image}" class="card-img w-full">
-          <div class="p-3">
-            <p class="font-bold">${card.name}</p>
-            <button onclick="removeCard(${index})" class="text-red-400 text-sm mt-2">Remove</button>
+          <div class="p-4">
+            <p class="font-medium text-sm">${card.name}</p>
+            <button onclick="removeCard(${i}); event.stopImmediatePropagation()" class="text-red-400 text-xs mt-3 hover:underline">Remove</button>
           </div>
         `;
         container.appendChild(div);
@@ -189,57 +223,59 @@
     }
 
     function removeCard(index) {
-      if (confirm("Remove this card?")) {
+      if (confirm("Remove this card from collection?")) {
         myCards.splice(index, 1);
         localStorage.setItem('myPokemonCards', JSON.stringify(myCards));
         loadCollection();
       }
     }
 
-    // Camera functionality
+    // Camera
     let videoStream = null;
-
     async function startCamera() {
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        const video = document.getElementById('video');
-        video.srcObject = videoStream;
+        document.getElementById('video').srcObject = videoStream;
       } catch (err) {
-        alert("Could not access camera. Make sure you allow camera permission.");
+        alert("Camera access denied or not available.");
       }
     }
 
     function takePhoto() {
       const video = document.getElementById('video');
-      const canvas = document.getElementById('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
       canvas.getContext('2d').drawImage(video, 0, 0);
 
       const imageData = canvas.toDataURL('image/jpeg');
 
-      const resultDiv = document.getElementById('scanResult');
-      resultDiv.innerHTML = `
-        <p class="text-green-400">Photo taken! (OCR coming in next version)</p>
-        <img src="${imageData}" class="mt-4 max-w-full rounded-xl">
-        <p class="mt-4 text-sm text-gray-400">For now, search the card name above and add it manually.</p>
+      document.getElementById('scanResult').innerHTML = `
+        <div class="bg-gray-900 rounded-3xl p-6">
+          <p class="text-green-400 mb-4">📸 Photo captured!</p>
+          <img src="${imageData}" class="rounded-2xl max-w-full">
+          <p class="mt-6 text-sm text-gray-400">OCR (auto-read card name) coming soon. For now, search the card manually above.</p>
+        </div>
       `;
 
-      // Stop camera
-      if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+      if (videoStream) videoStream.getTracks().forEach(t => t.stop());
     }
 
-    // Start camera when switching to camera tab
-    const cameraTabBtn = document.querySelector('[onclick="showTab(\'camera\')"]');
-    if (cameraTabBtn) {
-      cameraTabBtn.addEventListener('click', () => {
-        setTimeout(startCamera, 300);
-      });
-    }
-
-    // Initial setup
+    // Tab click for camera
     window.onload = () => {
-      showTab('search');
+      if (selectedStarter) {
+        document.getElementById('starterScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        updateProfileHeader();
+        showTab('search');
+        loadCollection();
+      } else {
+        document.getElementById('starterScreen').classList.remove('hidden');
+      }
+
+      // Auto-start camera when tab clicked
+      const cameraBtn = document.querySelector('button[onclick="showTab(\'camera\')"]');
+      if (cameraBtn) cameraBtn.addEventListener('click', () => setTimeout(startCamera, 400));
     };
   </script>
 </body>
