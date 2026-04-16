@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Pokémon Pokedex</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    .card-img { transition: transform 0.3s; }
+    .card-img:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+
+  <div class="max-w-6xl mx-auto p-4">
+    <header class="flex justify-between items-center mb-8">
+      <h1 class="text-4xl font-bold text-yellow-400">🃏 My Pokedex</h1>
+      
+      <div class="flex gap-4">
+        <button onclick="showTab('login')" id="loginBtn"
+          class="px-6 py-2 bg-blue-600 rounded-lg">Sign In</button>
+        <button onclick="logout()" id="logoutBtn" class="hidden px-6 py-2 bg-red-600 rounded-lg">Logout</button>
+      </div>
+    </header>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="max-w-md mx-auto bg-gray-900 p-8 rounded-2xl">
+      <h2 class="text-2xl mb-6 text-center">Sign in with Email</h2>
+      <input id="email" type="email" placeholder="your@email.com" 
+        class="w-full p-4 rounded-lg bg-gray-800 mb-4 text-white">
+      <input id="password" type="password" placeholder="Password" 
+        class="w-full p-4 rounded-lg bg-gray-800 mb-6 text-white">
+      <button onclick="fakeLogin()" 
+        class="w-full py-4 bg-yellow-400 text-black font-bold rounded-lg text-lg">
+        Sign In
+      </button>
+      <p class="text-center text-sm text-gray-400 mt-4">
+        (Demo - any email + password works)
+      </p>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+      <div class="flex gap-2 mb-6 border-b border-gray-700">
+        <button onclick="showTab('search')" class="tab-btn active px-6 py-3">Search Cards</button>
+        <button onclick="showTab('camera')" class="tab-btn px-6 py-3">📸 Scan Card</button>
+        <button onclick="showTab('collection')" class="tab-btn px-6 py-3">My Collection</button>
+        <button onclick="showTab('sets')" class="tab-btn px-6 py-3">Master Sets</button>
+      </div>
+
+      <!-- Search Tab -->
+      <div id="searchTab" class="tab">
+        <input id="searchInput" type="text" placeholder="Search Pokémon card (e.g. Pikachu)" 
+          class="w-full p-4 rounded-lg bg-gray-800 text-lg mb-4" onkeyup="if(event.key==='Enter') searchCards()">
+        <button onclick="searchCards()" 
+          class="px-8 py-3 bg-blue-600 rounded-lg">Search</button>
+
+        <div id="searchResults" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8"></div>
+      </div>
+
+      <!-- Camera Scan Tab -->
+      <div id="cameraTab" class="tab hidden">
+        <div class="bg-black rounded-2xl overflow-hidden">
+          <video id="video" autoplay playsinline class="w-full max-h-96"></video>
+        </div>
+        <button onclick="takePhoto()" 
+          class="mt-4 w-full py-6 bg-green-500 text-black font-bold text-2xl rounded-2xl">
+          📸 Take Picture of Card
+        </button>
+        <canvas id="canvas" class="hidden"></canvas>
+        
+        <div id="scanResult" class="mt-6 p-4 bg-gray-900 rounded-xl"></div>
+      </div>
+
+      <!-- My Collection Tab -->
+      <div id="collectionTab" class="tab hidden">
+        <h2 class="text-2xl mb-4">My Collection</h2>
+        <div id="myCollection" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+      </div>
+
+      <!-- Master Sets Tab -->
+      <div id="setsTab" class="tab hidden">
+        <h2 class="text-2xl mb-4">Master Sets (Coming Soon)</h2>
+        <p class="text-gray-400">We'll show every Pokémon set here with your completion % later.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let myCards = JSON.parse(localStorage.getItem('myPokemonCards') || '[]');
+
+    function fakeLogin() {
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        alert("Please enter an email");
+        return;
+      }
+      currentUser = email;
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      document.getElementById('loginBtn').classList.add('hidden');
+      document.getElementById('logoutBtn').classList.remove('hidden');
+      loadCollection();
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('mainApp').classList.add('hidden');
+      document.getElementById('loginBtn').classList.remove('hidden');
+      document.getElementById('logoutBtn').classList.add('hidden');
+    }
+
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.add('hidden'));
+      document.getElementById(tab + 'Tab').classList.remove('hidden');
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'border-b-4', 'border-yellow-400'));
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tab));
+      if (activeBtn) activeBtn.classList.add('active', 'border-b-4', 'border-yellow-400');
+    }
+
+    async function searchCards() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) return;
+
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '<p class="col-span-full text-center">Searching...</p>';
+
+      try {
+        const res = await fetch(`https://api.pokemontcg.io/v2/cards?q=name:${encodeURIComponent(query)}&pageSize=20`);
+        const data = await res.json();
+
+        resultsDiv.innerHTML = '';
+        if (data.data.length === 0) {
+          resultsDiv.innerHTML = '<p class="col-span-full text-center text-gray-400">No cards found</p>';
+          return;
+        }
+
+        data.data.forEach(card => {
+          const div = document.createElement('div');
+          div.className = 'bg-gray-900 rounded-xl overflow-hidden';
+          div.innerHTML = `
+            <img src="${card.images.small}" class="card-img w-full cursor-pointer" onclick="addToCollection('${card.id}', '${card.name}', '${card.images.large}')">
+            <div class="p-3">
+              <p class="font-bold">${card.name}</p>
+              <p class="text-sm text-gray-400">${card.set.name}</p>
+            </div>
+          `;
+          resultsDiv.appendChild(div);
+        });
+      } catch (e) {
+        resultsDiv.innerHTML = '<p class="col-span-full text-red-400">Error connecting to Pokémon API</p>';
+      }
+    }
+
+    function addToCollection(id, name, image) {
+      if (myCards.some(c => c.id === id)) {
+        alert("You already have this card!");
+        return;
+      }
+      myCards.push({ id, name, image });
+      localStorage.setItem('myPokemonCards', JSON.stringify(myCards));
+      alert(`Added ${name} to your collection!`);
+      loadCollection();
+    }
+
+    function loadCollection() {
+      const container = document.getElementById('myCollection');
+      container.innerHTML = '';
+      if (myCards.length === 0) {
+        container.innerHTML = '<p class="col-span-full text-center text-gray-400">Your collection is empty. Add some cards!</p>';
+        return;
+      }
+      myCards.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-900 rounded-xl overflow-hidden';
+        div.innerHTML = `
+          <img src="${card.image}" class="card-img w-full">
+          <div class="p-3">
+            <p class="font-bold">${card.name}</p>
+            <button onclick="removeCard(${index})" class="text-red-400 text-sm mt-2">Remove</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function removeCard(index) {
+      if (confirm("Remove this card?")) {
+        myCards.splice(index, 1);
+        localStorage.setItem('myPokemonCards', JSON.stringify(myCards));
+        loadCollection();
+      }
+    }
+
+    // Camera functionality
+    let videoStream = null;
+
+    async function startCamera() {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        const video = document.getElementById('video');
+        video.srcObject = videoStream;
+      } catch (err) {
+        alert("Could not access camera. Make sure you allow camera permission.");
+      }
+    }
+
+    function takePhoto() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const imageData = canvas.toDataURL('image/jpeg');
+
+      const resultDiv = document.getElementById('scanResult');
+      resultDiv.innerHTML = `
+        <p class="text-green-400">Photo taken! (OCR coming in next version)</p>
+        <img src="${imageData}" class="mt-4 max-w-full rounded-xl">
+        <p class="mt-4 text-sm text-gray-400">For now, search the card name above and add it manually.</p>
+      `;
+
+      // Stop camera
+      if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+    }
+
+    // Start camera when switching to camera tab
+    const cameraTabBtn = document.querySelector('[onclick="showTab(\'camera\')"]');
+    if (cameraTabBtn) {
+      cameraTabBtn.addEventListener('click', () => {
+        setTimeout(startCamera, 300);
+      });
+    }
+
+    // Initial setup
+    window.onload = () => {
+      showTab('search');
+    };
+  </script>
+</body>
+</html>
